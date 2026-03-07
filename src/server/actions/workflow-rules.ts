@@ -36,7 +36,7 @@ async function getAccount() {
   const session = await auth();
   if (!session?.user?.id) throw new Error('Not authenticated');
 
-  const account = db
+  const account = await db
     .select()
     .from(emailAccounts)
     .where(and(eq(emailAccounts.userId, session.user.id), eq(emailAccounts.isDefault, true)))
@@ -78,7 +78,7 @@ function rowToRule(row: typeof workflowRules.$inferSelect): WorkflowRule {
 export async function listWorkflowRules(): Promise<ActionResult<WorkflowRule[]>> {
   try {
     const account = await getAccount();
-    const rows = db
+    const rows = await db
       .select()
       .from(workflowRules)
       .where(eq(workflowRules.accountId, account.id))
@@ -103,7 +103,7 @@ export async function createWorkflowRule(data: {
     const id = randomUUID();
     const now = new Date();
 
-    db.insert(workflowRules)
+    await db.insert(workflowRules)
       .values({
         id,
         accountId: account.id,
@@ -120,7 +120,7 @@ export async function createWorkflowRule(data: {
       })
       .run();
 
-    const row = db.select().from(workflowRules).where(eq(workflowRules.id, id)).get()!;
+    const row = (await db.select().from(workflowRules).where(eq(workflowRules.id, id)).get())!;
     return { success: true, data: rowToRule(row) };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -151,12 +151,12 @@ export async function updateWorkflowRule(
     if (data.priority !== undefined) updates.priority = data.priority;
     if (data.enabled !== undefined) updates.enabled = data.enabled;
 
-    db.update(workflowRules)
+    await db.update(workflowRules)
       .set(updates)
       .where(and(eq(workflowRules.id, id), eq(workflowRules.accountId, account.id)))
       .run();
 
-    const row = db.select().from(workflowRules).where(eq(workflowRules.id, id)).get();
+    const row = await db.select().from(workflowRules).where(eq(workflowRules.id, id)).get();
     if (!row) return { success: false, error: 'Rule not found' };
     return { success: true, data: rowToRule(row) };
   } catch (err) {
@@ -167,7 +167,7 @@ export async function updateWorkflowRule(
 export async function deleteWorkflowRule(id: string): Promise<ActionResult<void>> {
   try {
     const account = await getAccount();
-    db.delete(workflowRules)
+    await db.delete(workflowRules)
       .where(and(eq(workflowRules.id, id), eq(workflowRules.accountId, account.id)))
       .run();
     return { success: true, data: undefined };
@@ -283,14 +283,14 @@ async function executeAction(
       case 'archive':
         return { type: 'archive', success: true, result: { note: 'queued' } };
       case 'star': {
-        db.update(cachedEmails)
+        await db.update(cachedEmails)
           .set({ isStarred: true, updatedAt: new Date() })
           .where(and(eq(cachedEmails.accountId, accountId), eq(cachedEmails.id, emailId)))
           .run();
         return { type: 'star', success: true };
       }
       case 'markRead': {
-        db.update(cachedEmails)
+        await db.update(cachedEmails)
           .set({ isRead: true, updatedAt: new Date() })
           .where(and(eq(cachedEmails.accountId, accountId), eq(cachedEmails.id, emailId)))
           .run();
@@ -363,7 +363,7 @@ export async function evaluateWorkflowRules(
     const account = await getAccount();
 
     // Get enabled rules sorted by priority
-    const rules = db
+    const rules = await db
       .select()
       .from(workflowRules)
       .where(and(eq(workflowRules.accountId, account.id), eq(workflowRules.enabled, true)))
@@ -375,7 +375,7 @@ export async function evaluateWorkflowRules(
     }
 
     // Load email data from cache
-    const emailRow = db
+    const emailRow = await db
       .select()
       .from(cachedEmails)
       .where(and(eq(cachedEmails.accountId, account.id), eq(cachedEmails.id, emailId)))
@@ -431,7 +431,7 @@ export async function evaluateWorkflowRules(
       }
 
       // Update trigger count
-      db.update(workflowRules)
+      await db.update(workflowRules)
         .set({
           triggerCount: sql`${workflowRules.triggerCount} + 1`,
           lastTriggered: new Date(),
@@ -457,7 +457,7 @@ export async function testWorkflowRule(
   try {
     const account = await getAccount();
 
-    const row = db
+    const row = await db
       .select()
       .from(workflowRules)
       .where(and(eq(workflowRules.id, ruleId), eq(workflowRules.accountId, account.id)))
@@ -466,7 +466,7 @@ export async function testWorkflowRule(
     if (!row) return { success: false, error: 'Rule not found' };
     const rule = rowToRule(row);
 
-    const emailRow = db
+    const emailRow = await db
       .select()
       .from(cachedEmails)
       .where(and(eq(cachedEmails.accountId, account.id), eq(cachedEmails.id, emailId)))

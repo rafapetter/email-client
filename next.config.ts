@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   serverExternalPackages: [
     '@petter100/emai',
-    'better-sqlite3',
+    '@libsql/client',
     'imapflow',
     'mailparser',
     'nodemailer',

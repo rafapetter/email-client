@@ -22,7 +22,7 @@ async function getEmai() {
   const session = await auth();
   if (!session?.user?.id) throw new Error('Not authenticated');
 
-  const account = db
+  const account = await db
     .select()
     .from(emailAccounts)
     .where(and(eq(emailAccounts.userId, session.user.id), eq(emailAccounts.isDefault, true)))

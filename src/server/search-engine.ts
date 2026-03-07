@@ -1,9 +1,9 @@
 /**
- * Singleton search engine using emai SDK's SearchEngine with SQLite vector store.
- * Provides real semantic (embedding-based) + BM25 full-text hybrid search.
+ * Singleton search engine using emai SDK's SearchEngine with in-memory vector store.
+ * Provides BM25 full-text hybrid search (Vercel-compatible, no filesystem needed).
  *
- * If the AI adapter doesn't support embeddings (e.g. Anthropic), falls back to
- * BM25 full-text search only — which is still far better than LIKE queries.
+ * If the AI adapter supports embeddings, uses hybrid semantic + BM25 search.
+ * Otherwise falls back to BM25 full-text search only.
  */
 
 import { db } from '@/lib/db';
@@ -17,7 +17,7 @@ let _emaiModule: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let SearchEngine: (new (vectorStore: any, llm: any, storage?: any) => any) | null = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let SqliteVectorStore: (new (path?: string) => any) | null = null;
+let MemoryVectorStore: (new () => any) | null = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let createAdapter: ((config: Record<string, unknown>) => any) | null = null;
 
@@ -26,9 +26,9 @@ async function loadEmaiSdk() {
   try {
     _emaiModule = await import('@petter100/emai');
     SearchEngine = _emaiModule.SearchEngine;
-    SqliteVectorStore = _emaiModule.SqliteVectorStore;
+    MemoryVectorStore = _emaiModule.MemoryVectorStore;
     createAdapter = _emaiModule.createAdapter;
-    if (!SearchEngine || !SqliteVectorStore || !createAdapter) {
+    if (!SearchEngine || !MemoryVectorStore || !createAdapter) {
       console.error('[SearchEngine] Missing exports from emai SDK');
       return false;
     }
@@ -41,8 +41,6 @@ async function loadEmaiSdk() {
   }
 }
 
-const VECTOR_DB_PATH = './data/search-vectors.db';
-
 // Cache search engine instances per account
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const engineCache = new Map<string, { engine: any; supportsEmbeddings: boolean; initialized: boolean; indexed: boolean }>();
@@ -54,14 +52,14 @@ const engineCache = new Map<string, { engine: any; supportsEmbeddings: boolean; 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getSearchEngine(accountId: string): Promise<{ engine: any; supportsEmbeddings: boolean; indexed: boolean }> {
   const loaded = await loadEmaiSdk();
-  if (!loaded || !SearchEngine || !SqliteVectorStore || !createAdapter) {
+  if (!loaded || !SearchEngine || !MemoryVectorStore || !createAdapter) {
     throw new Error('emai SDK not available');
   }
 
   const cached = engineCache.get(accountId);
   if (cached?.initialized) return cached;
 
-  const account = db
+  const account = await db
     .select()
     .from(emailAccounts)
     .where(eq(emailAccounts.id, accountId))
@@ -81,8 +79,8 @@ export async function getSearchEngine(accountId: string): Promise<{ engine: any;
   // Anthropic doesn't support embeddings natively
   const supportsEmbeddings = !!llmAdapter && account.aiAdapter !== 'anthropic';
 
-  // Create SQLite vector store (persistent on disk)
-  const vectorStore = new SqliteVectorStore(VECTOR_DB_PATH);
+  // In-memory vector store (works on Vercel serverless — re-indexes on cold start)
+  const vectorStore = new MemoryVectorStore();
 
   // If we don't have an adapter that supports embeddings, we still create the engine
   // but will only use full-text search. We pass a dummy adapter that throws on embed.
@@ -173,7 +171,7 @@ export async function indexAllCachedEmails(accountId: string): Promise<number> {
   const loaded = await loadEmaiSdk();
   if (!loaded) return 0;
 
-  const rows = db
+  const rows = await db
     .select()
     .from(cachedEmails)
     .where(eq(cachedEmails.accountId, accountId))

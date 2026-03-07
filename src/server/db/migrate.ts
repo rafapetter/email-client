@@ -1,24 +1,25 @@
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import Database from 'better-sqlite3';
-import { existsSync, mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { drizzle } from 'drizzle-orm/libsql';
+import { migrate } from 'drizzle-orm/libsql/migrator';
+import { createClient } from '@libsql/client';
 
-const DB_PATH = './data/email-client.db';
+const url = process.env.TURSO_DATABASE_URL ?? 'file:./data/email-client.db';
+const authToken = process.env.TURSO_AUTH_TOKEN;
 
-const dir = dirname(DB_PATH);
-if (!existsSync(dir)) {
-  mkdirSync(dir, { recursive: true });
+const client = createClient({
+  url,
+  ...(authToken && { authToken }),
+});
+
+const db = drizzle(client);
+
+async function runMigrations() {
+  console.log('Running migrations...');
+  await migrate(db, { migrationsFolder: './drizzle' });
+  console.log('Migrations complete.');
+  client.close();
 }
 
-const sqlite = new Database(DB_PATH);
-sqlite.pragma('journal_mode = WAL');
-sqlite.pragma('foreign_keys = ON');
-
-const db = drizzle(sqlite);
-
-console.log('Running migrations...');
-migrate(db, { migrationsFolder: './drizzle' });
-console.log('Migrations complete.');
-
-sqlite.close();
+runMigrations().catch((err) => {
+  console.error('Migration failed:', err);
+  process.exit(1);
+});

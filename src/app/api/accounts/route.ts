@@ -62,12 +62,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Set all other accounts as non-default
-    db.update(emailAccounts)
+    await db.update(emailAccounts)
       .set({ isDefault: false })
       .where(eq(emailAccounts.userId, session.user.id))
       .run();
 
-    db.insert(emailAccounts).values(values).run();
+    await db.insert(emailAccounts).values(values).run();
 
     return NextResponse.json({ success: true, id });
   } catch (err) {
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const rows = db
+    const rows = await db
       .select()
       .from(emailAccounts)
       .where(eq(emailAccounts.userId, session.user.id))
@@ -121,22 +121,22 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Verify ownership
-    const account = db.select().from(emailAccounts)
+    const account = await db.select().from(emailAccounts)
       .where(and(eq(emailAccounts.id, id), eq(emailAccounts.userId, session.user.id)))
       .get();
     if (!account) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    db.delete(emailAccounts).where(eq(emailAccounts.id, id)).run();
+    await db.delete(emailAccounts).where(eq(emailAccounts.id, id)).run();
 
     // If deleted account was default, promote the first remaining one
     if (account.isDefault) {
-      const remaining = db.select().from(emailAccounts)
+      const remaining = await db.select().from(emailAccounts)
         .where(eq(emailAccounts.userId, session.user.id))
         .get();
       if (remaining) {
-        db.update(emailAccounts).set({ isDefault: true }).where(eq(emailAccounts.id, remaining.id)).run();
+        await db.update(emailAccounts).set({ isDefault: true }).where(eq(emailAccounts.id, remaining.id)).run();
       }
     }
 
@@ -162,7 +162,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Verify ownership
-    const account = db.select().from(emailAccounts)
+    const account = await db.select().from(emailAccounts)
       .where(and(eq(emailAccounts.id, id), eq(emailAccounts.userId, session.user.id)))
       .get();
     if (!account) {
@@ -170,8 +170,8 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (isDefault) {
-      db.update(emailAccounts).set({ isDefault: false }).where(eq(emailAccounts.userId, session.user.id)).run();
-      db.update(emailAccounts).set({ isDefault: true }).where(eq(emailAccounts.id, id)).run();
+      await db.update(emailAccounts).set({ isDefault: false }).where(eq(emailAccounts.userId, session.user.id)).run();
+      await db.update(emailAccounts).set({ isDefault: true }).where(eq(emailAccounts.id, id)).run();
     }
 
     // Update account fields
@@ -184,7 +184,7 @@ export async function PATCH(request: NextRequest) {
     if (aiModel !== undefined) updates.aiModel = aiModel;
 
     if (Object.keys(updates).length > 0) {
-      db.update(emailAccounts).set(updates).where(eq(emailAccounts.id, id)).run();
+      await db.update(emailAccounts).set(updates).where(eq(emailAccounts.id, id)).run();
 
       // Invalidate cached emai instance so it reconnects with new config
       if (updates.credentialsEncrypted || updates.aiAdapter || updates.aiApiKeyEncrypted || updates.aiModel) {

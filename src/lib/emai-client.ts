@@ -166,7 +166,7 @@ export async function getEmaiForAccount(accountId: string): Promise<EmaiInstance
     }
     // Try reconnecting the cached instance with retry
     try {
-      const account = db.select().from(emailAccounts).where(eq(emailAccounts.id, accountId)).get();
+      const account = await db.select().from(emailAccounts).where(eq(emailAccounts.id, accountId)).get();
       await connectWithRetry(cached.emai, accountId, {
         providerType: account?.providerType ?? 'unknown',
         host: 'cached',
@@ -188,7 +188,7 @@ export async function getEmaiForAccount(accountId: string): Promise<EmaiInstance
   // 3. Create new instance with retry
   const connectPromise = (async () => {
     try {
-      const account = db.select().from(emailAccounts).where(eq(emailAccounts.id, accountId)).get();
+      const account = await db.select().from(emailAccounts).where(eq(emailAccounts.id, accountId)).get();
       if (!account) {
         throw new Error(`Email account not found: ${accountId}`);
       }

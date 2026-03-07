@@ -29,7 +29,7 @@ async function getAccountWithAi() {
   const session = await auth();
   if (!session?.user?.id) throw new Error('Not authenticated');
 
-  const account = db
+  const account = await db
     .select()
     .from(emailAccounts)
     .where(and(eq(emailAccounts.userId, session.user.id), eq(emailAccounts.isDefault, true)))
@@ -60,13 +60,13 @@ export async function getAiProcessingStatus(): Promise<ActionResult<AiProcessing
   try {
     const account = await getAccountWithAi();
 
-    const totalResult = db
+    const totalResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(cachedEmails)
       .where(eq(cachedEmails.accountId, account.id))
       .get();
 
-    const processedResult = db
+    const processedResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(cachedEmails)
       .where(and(eq(cachedEmails.accountId, account.id), eq(cachedEmails.aiProcessed, true)))
@@ -133,7 +133,7 @@ async function processOneEmail(
     }
 
     // Mark as processed even if some features failed
-    db.update(cachedEmails)
+    await db.update(cachedEmails)
       .set({ aiProcessed: true, updatedAt: new Date() })
       .where(and(eq(cachedEmails.accountId, accountId), eq(cachedEmails.id, row.id)))
       .run();
@@ -147,7 +147,7 @@ async function processOneEmail(
   } catch (err) {
     console.warn(`[AI:process] Failed for ${row.id}:`, err);
     // Still mark as processed to avoid infinite retries on bad emails
-    db.update(cachedEmails)
+    await db.update(cachedEmails)
       .set({ aiProcessed: true, updatedAt: new Date() })
       .where(and(eq(cachedEmails.accountId, accountId), eq(cachedEmails.id, row.id)))
       .run();
@@ -163,7 +163,7 @@ export async function processUnprocessedEmails(
     const account = await getAccountWithAi();
     const aiEngine = createAiEngine(account);
 
-    const unprocessed = db
+    const unprocessed = await db
       .select()
       .from(cachedEmails)
       .where(and(eq(cachedEmails.accountId, account.id), eq(cachedEmails.aiProcessed, false)))
@@ -183,7 +183,7 @@ export async function processUnprocessedEmails(
       (r) => r.status === 'fulfilled' && r.value,
     ).length;
 
-    const remainingResult = db
+    const remainingResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(cachedEmails)
       .where(and(eq(cachedEmails.accountId, account.id), eq(cachedEmails.aiProcessed, false)))

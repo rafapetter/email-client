@@ -21,7 +21,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const { eq } = await import('drizzle-orm');
         const bcrypt = await import('bcryptjs');
 
-        const user = db.select().from(users).where(eq(users.email, email)).get();
+        const user = await db.select().from(users).where(eq(users.email, email)).get();
         if (!user) return null;
 
         const valid = await bcrypt.compare(password, user.passwordHash);

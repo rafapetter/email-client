@@ -32,7 +32,7 @@ export async function getCachedEnrichment(
   accountId: string,
   emailId: string,
 ): Promise<AiEnrichment | null> {
-  const row = db
+  const row = await db
     .select()
     .from(aiEnrichments)
     .where(and(eq(aiEnrichments.accountId, accountId), eq(aiEnrichments.emailId, emailId)))
@@ -54,7 +54,7 @@ export async function getCachedEnrichments(
 
   for (let i = 0; i < emailIds.length; i += CHUNK) {
     const chunk = emailIds.slice(i, i + CHUNK);
-    const rows = db
+    const rows = await db
       .select()
       .from(aiEnrichments)
       .where(and(eq(aiEnrichments.accountId, accountId), inArray(aiEnrichments.emailId, chunk)))
@@ -77,7 +77,7 @@ export async function setCachedEnrichment(
   emailId: string,
   partial: Partial<AiEnrichment>,
 ): Promise<void> {
-  const existing = db
+  const existing = await db
     .select()
     .from(aiEnrichments)
     .where(and(eq(aiEnrichments.accountId, accountId), eq(aiEnrichments.emailId, emailId)))
@@ -95,12 +95,12 @@ export async function setCachedEnrichment(
     if (partial.topics) updates.topics = JSON.stringify(partial.topics);
     if (partial.extractedData) updates.extractedData = JSON.stringify(partial.extractedData);
 
-    db.update(aiEnrichments)
+    await db.update(aiEnrichments)
       .set(updates)
       .where(eq(aiEnrichments.id, existing.id))
       .run();
   } else {
-    db.insert(aiEnrichments)
+    await db.insert(aiEnrichments)
       .values({
         id: randomUUID(),
         accountId,
@@ -125,7 +125,7 @@ export async function loadEnrichmentsForEmails(
   const session = await auth();
   if (!session?.user?.id) return {};
 
-  const account = db
+  const account = await db
     .select()
     .from(emailAccounts)
     .where(and(eq(emailAccounts.userId, session.user.id), eq(emailAccounts.isDefault, true)))

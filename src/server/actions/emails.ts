@@ -30,7 +30,7 @@ async function getAccountAndEmai() {
   const session = await auth();
   if (!session?.user?.id) throw new Error('Not authenticated');
 
-  const account = db
+  const account = await db
     .select()
     .from(emailAccounts)
     .where(and(eq(emailAccounts.userId, session.user.id), eq(emailAccounts.isDefault, true)))
@@ -50,7 +50,7 @@ async function getAiEngine() {
   const session = await auth();
   if (!session?.user?.id) throw new Error('Not authenticated');
 
-  const account = db
+  const account = await db
     .select()
     .from(emailAccounts)
     .where(and(eq(emailAccounts.userId, session.user.id), eq(emailAccounts.isDefault, true)))
@@ -175,7 +175,7 @@ export async function starEmail(id: string): Promise<ActionResult<void>> {
     const { emai, accountId } = await getAccountAndEmai();
     await emai.emails.star(id);
     // Update local cache
-    db.update(cachedEmails).set({ isStarred: true, updatedAt: new Date() })
+    await db.update(cachedEmails).set({ isStarred: true, updatedAt: new Date() })
       .where(and(eq(cachedEmails.accountId, accountId), eq(cachedEmails.id, id))).run();
     return { success: true, data: undefined };
   } catch (err) {
@@ -187,7 +187,7 @@ export async function unstarEmail(id: string): Promise<ActionResult<void>> {
   try {
     const { emai, accountId } = await getAccountAndEmai();
     await emai.emails.unstar(id);
-    db.update(cachedEmails).set({ isStarred: false, updatedAt: new Date() })
+    await db.update(cachedEmails).set({ isStarred: false, updatedAt: new Date() })
       .where(and(eq(cachedEmails.accountId, accountId), eq(cachedEmails.id, id))).run();
     return { success: true, data: undefined };
   } catch (err) {
@@ -200,7 +200,7 @@ export async function markAsRead(id: string): Promise<ActionResult<void>> {
     const { emai, accountId } = await getAccountAndEmai();
     await emai.emails.markAsRead(id);
     // Update local cache
-    db.update(cachedEmails).set({ isRead: true, updatedAt: new Date() })
+    await db.update(cachedEmails).set({ isRead: true, updatedAt: new Date() })
       .where(and(eq(cachedEmails.accountId, accountId), eq(cachedEmails.id, id))).run();
     return { success: true, data: undefined };
   } catch (err) {
@@ -212,7 +212,7 @@ export async function markAsUnread(id: string): Promise<ActionResult<void>> {
   try {
     const { emai, accountId } = await getAccountAndEmai();
     await emai.emails.markAsUnread(id);
-    db.update(cachedEmails).set({ isRead: false, updatedAt: new Date() })
+    await db.update(cachedEmails).set({ isRead: false, updatedAt: new Date() })
       .where(and(eq(cachedEmails.accountId, accountId), eq(cachedEmails.id, id))).run();
     return { success: true, data: undefined };
   } catch (err) {

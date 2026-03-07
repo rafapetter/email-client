@@ -22,7 +22,7 @@ export async function getAccounts(): Promise<ActionResult<EmailAccount[]>> {
   try {
     const userId = await requireUserId();
 
-    const accounts = db
+    const accounts = await db
       .select({
         id: emailAccounts.id,
         name: emailAccounts.name,
@@ -75,15 +75,15 @@ export async function createAccount(formData: FormData): Promise<ActionResult<Em
     const aiApiKeyEncrypted = aiApiKey ? encrypt(aiApiKey) : null;
 
     // Check if this is the first account (make it default)
-    const existingCount = db
+    const existingCount = (await db
       .select({ id: emailAccounts.id })
       .from(emailAccounts)
       .where(eq(emailAccounts.userId, userId))
-      .all().length;
+      .all()).length;
 
     const isDefault = existingCount === 0;
 
-    db.insert(emailAccounts)
+    await db.insert(emailAccounts)
       .values({
         id,
         userId,
@@ -117,7 +117,7 @@ export async function deleteAccount(id: string): Promise<ActionResult<void>> {
     const userId = await requireUserId();
 
     // Verify the account belongs to the user
-    const account = db
+    const account = await db
       .select()
       .from(emailAccounts)
       .where(and(eq(emailAccounts.id, id), eq(emailAccounts.userId, userId)))
@@ -131,20 +131,20 @@ export async function deleteAccount(id: string): Promise<ActionResult<void>> {
     await disconnectAccount(id);
 
     // Delete from DB
-    db.delete(emailAccounts)
+    await db.delete(emailAccounts)
       .where(and(eq(emailAccounts.id, id), eq(emailAccounts.userId, userId)))
       .run();
 
     // If this was the default account, promote another one
     if (account.isDefault) {
-      const remaining = db
+      const remaining = await db
         .select()
         .from(emailAccounts)
         .where(eq(emailAccounts.userId, userId))
         .all();
 
       if (remaining.length > 0) {
-        db.update(emailAccounts)
+        await db.update(emailAccounts)
           .set({ isDefault: true })
           .where(eq(emailAccounts.id, remaining[0].id))
           .run();
@@ -167,12 +167,12 @@ export async function getAiPreferences(): Promise<ActionResult<{
     const session = await auth();
     if (!session?.user?.id) throw new Error('Not authenticated');
 
-    let prefs = db.select().from(userPreferences).where(eq(userPreferences.userId, session.user.id)).get();
+    let prefs = await db.select().from(userPreferences).where(eq(userPreferences.userId, session.user.id)).get();
     if (!prefs) {
       // Create default preferences
       const id = generateId();
-      db.insert(userPreferences).values({ id, userId: session.user.id }).run();
-      prefs = db.select().from(userPreferences).where(eq(userPreferences.userId, session.user.id)).get();
+      await db.insert(userPreferences).values({ id, userId: session.user.id }).run();
+      prefs = await db.select().from(userPreferences).where(eq(userPreferences.userId, session.user.id)).get();
     }
 
     return {
@@ -199,13 +199,13 @@ export async function updateAiPreferences(updates: {
     const session = await auth();
     if (!session?.user?.id) throw new Error('Not authenticated');
 
-    let prefs = db.select().from(userPreferences).where(eq(userPreferences.userId, session.user.id)).get();
+    let prefs = await db.select().from(userPreferences).where(eq(userPreferences.userId, session.user.id)).get();
     if (!prefs) {
       const id = generateId();
-      db.insert(userPreferences).values({ id, userId: session.user.id }).run();
+      await db.insert(userPreferences).values({ id, userId: session.user.id }).run();
     }
 
-    db.update(userPreferences).set(updates).where(eq(userPreferences.userId, session.user.id)).run();
+    await db.update(userPreferences).set(updates).where(eq(userPreferences.userId, session.user.id)).run();
     return { success: true, data: undefined };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -217,7 +217,7 @@ export async function setDefaultAccount(id: string): Promise<ActionResult<void>>
     const userId = await requireUserId();
 
     // Verify the account belongs to the user
-    const account = db
+    const account = await db
       .select()
       .from(emailAccounts)
       .where(and(eq(emailAccounts.id, id), eq(emailAccounts.userId, userId)))
@@ -228,13 +228,13 @@ export async function setDefaultAccount(id: string): Promise<ActionResult<void>>
     }
 
     // Unset all defaults for this user
-    db.update(emailAccounts)
+    await db.update(emailAccounts)
       .set({ isDefault: false })
       .where(eq(emailAccounts.userId, userId))
       .run();
 
     // Set the new default
-    db.update(emailAccounts)
+    await db.update(emailAccounts)
       .set({ isDefault: true })
       .where(eq(emailAccounts.id, id))
       .run();

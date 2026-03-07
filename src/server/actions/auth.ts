@@ -30,7 +30,7 @@ export async function registerUser(formData: FormData) {
   const { name, email, password } = parsed.data;
 
   // Check if email already exists
-  const existing = db.select().from(users).where(eq(users.email, email)).get();
+  const existing = await db.select().from(users).where(eq(users.email, email)).get();
   if (existing) {
     return { error: 'An account with this email already exists' };
   }
@@ -38,8 +38,8 @@ export async function registerUser(formData: FormData) {
   const passwordHash = await bcrypt.hash(password, 12);
   const id = generateId();
 
-  db.insert(users).values({ id, email, passwordHash, name }).run();
-  db.insert(userPreferences).values({ id: generateId(), userId: id }).run();
+  await db.insert(users).values({ id, email, passwordHash, name }).run();
+  await db.insert(userPreferences).values({ id: generateId(), userId: id }).run();
 
   // Auto sign in
   try {

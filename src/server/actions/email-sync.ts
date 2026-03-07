@@ -14,7 +14,7 @@ async function getAccountAndEmai() {
   const session = await auth();
   if (!session?.user?.id) throw new Error('Not authenticated');
 
-  const account = db
+  const account = await db
     .select()
     .from(emailAccounts)
     .where(and(eq(emailAccounts.userId, session.user.id), eq(emailAccounts.isDefault, true)))
@@ -29,7 +29,7 @@ async function getAccount() {
   const session = await auth();
   if (!session?.user?.id) throw new Error('Not authenticated');
 
-  const account = db
+  const account = await db
     .select()
     .from(emailAccounts)
     .where(and(eq(emailAccounts.userId, session.user.id), eq(emailAccounts.isDefault, true)))
@@ -81,7 +81,7 @@ export async function syncEmails(
       const attachments = (email.attachments as Array<Record<string, unknown>> | undefined) ?? [];
       const date = email.date instanceof Date ? email.date : (email.date ? new Date(String(email.date)) : null);
 
-      const existing = db
+      const existing = await db
         .select({ id: cachedEmails.id })
         .from(cachedEmails)
         .where(and(eq(cachedEmails.accountId, account.id), eq(cachedEmails.id, id)))
@@ -112,12 +112,12 @@ export async function syncEmails(
       };
 
       if (existing) {
-        db.update(cachedEmails)
+        await db.update(cachedEmails)
           .set(values)
           .where(and(eq(cachedEmails.accountId, account.id), eq(cachedEmails.id, id)))
           .run();
       } else {
-        db.insert(cachedEmails)
+        await db.insert(cachedEmails)
           .values({
             id,
             accountId: account.id,
@@ -132,7 +132,7 @@ export async function syncEmails(
 
     // Index synced emails in the search engine (background, non-blocking)
     if (synced > 0) {
-      const syncedRows = db
+      const syncedRows = await db
         .select()
         .from(cachedEmails)
         .where(and(eq(cachedEmails.accountId, account.id), eq(cachedEmails.folder, folder)))
@@ -159,7 +159,7 @@ export async function getLocalEmails(
   try {
     const account = await getAccount();
 
-    const rows = db
+    const rows = await db
       .select()
       .from(cachedEmails)
       .where(and(eq(cachedEmails.accountId, account.id), eq(cachedEmails.folder, folder)))
@@ -168,7 +168,7 @@ export async function getLocalEmails(
       .offset(offset)
       .all();
 
-    const totalRow = db
+    const totalRow = await db
       .select({ count: cachedEmails.id })
       .from(cachedEmails)
       .where(and(eq(cachedEmails.accountId, account.id), eq(cachedEmails.folder, folder)))
@@ -191,7 +191,7 @@ export async function getLocalEmail(emailId: string): Promise<ActionResult<Seria
   try {
     const account = await getAccount();
 
-    const row = db
+    const row = await db
       .select()
       .from(cachedEmails)
       .where(and(eq(cachedEmails.accountId, account.id), eq(cachedEmails.id, emailId)))
@@ -213,7 +213,7 @@ export async function getLocalEmail(emailId: string): Promise<ActionResult<Seria
 
     // Update the cache with the full body
     if (row) {
-      db.update(cachedEmails)
+      await db.update(cachedEmails)
         .set({
           bodyText: body?.text ?? null,
           bodyHtml: body?.html ?? null,

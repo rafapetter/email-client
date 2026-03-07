@@ -13,7 +13,7 @@ async function getAccount() {
   const session = await auth();
   if (!session?.user?.id) throw new Error('Not authenticated');
 
-  const account = db
+  const account = await db
     .select()
     .from(emailAccounts)
     .where(and(eq(emailAccounts.userId, session.user.id), eq(emailAccounts.isDefault, true)))
@@ -65,7 +65,7 @@ export async function searchEmails(
 
     if (emailIds.length > 0) {
       // Fetch full email rows by the IDs returned from the search engine
-      const rows = db
+      const rows = await db
         .select()
         .from(cachedEmails)
         .where(
@@ -87,7 +87,7 @@ export async function searchEmails(
 
     // Fallback: simple LIKE search (if search engine hasn't indexed yet or failed)
     const pattern = `%${trimmedQuery}%`;
-    const rows = db
+    const rows = await db
       .select()
       .from(cachedEmails)
       .where(

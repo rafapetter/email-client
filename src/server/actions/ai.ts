@@ -37,7 +37,7 @@ async function getAccountWithAi() {
   const session = await auth();
   if (!session?.user?.id) throw new Error('Not authenticated');
 
-  const account = db
+  const account = await db
     .select()
     .from(emailAccounts)
     .where(and(eq(emailAccounts.userId, session.user.id), eq(emailAccounts.isDefault, true)))
@@ -65,8 +65,8 @@ function createAiEngine(account: typeof emailAccounts.$inferSelect): any {
 }
 
 /** Load email content from local SQLite cache */
-function getEmailContentFromCache(accountId: string, emailId: string): EmailContent | null {
-  const row = db
+async function getEmailContentFromCache(accountId: string, emailId: string): Promise<EmailContent | null> {
+  const row = await db
     .select()
     .from(cachedEmails)
     .where(and(eq(cachedEmails.accountId, accountId), eq(cachedEmails.id, emailId)))
@@ -84,8 +84,8 @@ function getEmailContentFromCache(accountId: string, emailId: string): EmailCont
 }
 
 /** Load multiple email contents from local SQLite cache */
-function getEmailContentsFromCache(accountId: string, emailIds: string[]): Array<{ id: string; content: EmailContent }> {
-  const rows = db
+async function getEmailContentsFromCache(accountId: string, emailIds: string[]): Promise<Array<{ id: string; content: EmailContent }>> {
+  const rows = await db
     .select()
     .from(cachedEmails)
     .where(and(eq(cachedEmails.accountId, accountId), inArray(cachedEmails.id, emailIds)))
@@ -112,7 +112,7 @@ export async function classifyEmail(
     const cached = await getCachedEnrichment(account.id, emailId);
     if (cached?.classification) return { success: true, data: cached.classification };
 
-    const email = emailContent ?? getEmailContentFromCache(account.id, emailId);
+    const email = emailContent ?? await getEmailContentFromCache(account.id, emailId);
     if (!email) return { success: false, error: 'Email not found in cache' };
 
     const aiEngine = createAiEngine(account);
@@ -134,7 +134,7 @@ export async function summarizeEmail(
     const cached = await getCachedEnrichment(account.id, emailId);
     if (cached?.summary) return { success: true, data: cached.summary };
 
-    const email = emailContent ?? getEmailContentFromCache(account.id, emailId);
+    const email = emailContent ?? await getEmailContentFromCache(account.id, emailId);
     if (!email) return { success: false, error: 'Email not found in cache' };
 
     const aiEngine = createAiEngine(account);
@@ -156,7 +156,7 @@ export async function prioritizeEmail(
     const cached = await getCachedEnrichment(account.id, emailId);
     if (cached?.priority) return { success: true, data: cached.priority };
 
-    const email = emailContent ?? getEmailContentFromCache(account.id, emailId);
+    const email = emailContent ?? await getEmailContentFromCache(account.id, emailId);
     if (!email) return { success: false, error: 'Email not found in cache' };
 
     const aiEngine = createAiEngine(account);
@@ -178,7 +178,7 @@ export async function detectActions(
     const cached = await getCachedEnrichment(account.id, emailId);
     if (cached?.actionItems) return { success: true, data: cached.actionItems };
 
-    const email = emailContent ?? getEmailContentFromCache(account.id, emailId);
+    const email = emailContent ?? await getEmailContentFromCache(account.id, emailId);
     if (!email) return { success: false, error: 'Email not found in cache' };
 
     const aiEngine = createAiEngine(account);
@@ -267,7 +267,7 @@ export async function generateReply(
 ): Promise<ActionResult<{ subject: string; body: string }>> {
   try {
     const account = await getAccountWithAi();
-    const email = getEmailContentFromCache(account.id, emailId);
+    const email = await getEmailContentFromCache(account.id, emailId);
     if (!email) return { success: false, error: 'Email not found in cache' };
 
     const aiEngine = createAiEngine(account);
@@ -287,7 +287,7 @@ export async function extractTopics(
     const cached = await getCachedEnrichment(account.id, emailId);
     if (cached?.topics) return { success: true, data: cached.topics };
 
-    const email = emailContent ?? getEmailContentFromCache(account.id, emailId);
+    const email = emailContent ?? await getEmailContentFromCache(account.id, emailId);
     if (!email) return { success: false, error: 'Email not found in cache' };
 
     const aiEngine = createAiEngine(account);
@@ -311,7 +311,7 @@ export async function askAi(
     // Load email content from local SQLite cache (no IMAP needed)
     let emailContents: Array<{ id: string; content: EmailContent }> = [];
     if (emailIds && emailIds.length > 0) {
-      emailContents = getEmailContentsFromCache(account.id, emailIds);
+      emailContents = await getEmailContentsFromCache(account.id, emailIds);
     }
 
     const result = await aiEngine.askQuestion(
@@ -332,7 +332,7 @@ export async function groupByTopic(
   try {
     const account = await getAccountWithAi();
     const aiEngine = createAiEngine(account);
-    const emailContents = getEmailContentsFromCache(account.id, emailIds);
+    const emailContents = await getEmailContentsFromCache(account.id, emailIds);
     const result = await aiEngine.groupByTopic(emailContents.map((e) => ({ ...e.content, id: e.id })));
     const data = result as { groups: Array<{ topic: string; description: string; emailIds: string[]; confidence: number }>; ungrouped: string[] };
     return { success: true, data };
