@@ -46,8 +46,8 @@ Think of it as your dashboard for AI email management. Your agents use `emai` to
 
 ```bash
 # Clone and install
-git clone https://github.com/rafapetter/email-client.git
-cd email-client
+git clone https://github.com/rafapetter/emai-client.git
+cd emai-client
 npm install
 
 # Generate secrets
