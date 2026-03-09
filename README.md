@@ -1,22 +1,52 @@
 # emai-client
 
-A Superhuman-style email client built with Next.js. Designed as the human interface for reviewing and managing what AI agents do with your email using the [@petter100/emai](https://www.npmjs.com/package/@petter100/emai) SDK.
+The human interface for AI-managed email. Built for non-technical users who want to see, review, and manage what their AI agents are doing with email — powered by the [@petter100/emai](https://www.npmjs.com/package/@petter100/emai) SDK.
+
+## About
+
+**emai** is an AI-first email toolkit designed for autonomous agents. It handles reading, sending, searching, classifying, and managing email across any IMAP/SMTP provider — all programmatically, without a UI.
+
+**emai-client** is the companion web app. It gives humans a Superhuman-style interface to:
+
+- **Monitor** what AI agents are doing with their email in real time
+- **Review** AI-generated summaries, priority scores, and classifications
+- **Override** agent decisions — archive, reply, forward, delete manually
+- **Configure** AI behavior and workflow automation rules
+- **Search** across all synced emails with hybrid full-text + semantic search
+
+Think of it as your dashboard for AI email management. Your agents use `emai` to work; you use `emai-client` to supervise.
+
+## Screenshots
+
+### Inbox — 3-pane layout with real-time email sync
+![Inbox](docs/screenshots/inbox.png)
+
+### Email Detail — full email rendering with action buttons
+![Email Detail](docs/screenshots/email-detail.png)
+
+### AI Settings — configure AI enrichment features
+![AI Settings](docs/screenshots/settings-ai.png)
+
+### Workflow Rules — automate actions based on AI analysis
+![Workflow Rules](docs/screenshots/workflows.png)
 
 ## Features
 
-- 3-pane layout (sidebar, email list, email detail)
-- IMAP/SMTP email sync with multiple account support
-- AI-powered email enrichment (priority, classification, summaries, action items)
-- Hybrid search (BM25 full-text + optional semantic search)
-- Workflow rules engine with AI conditions and actions
-- Keyboard shortcuts throughout
-- Dark mode support
+- **3-pane layout** — sidebar, email list, and email detail (Superhuman-inspired)
+- **Multi-account IMAP/SMTP** — connect Gmail, Outlook, or any IMAP provider
+- **AI enrichment** — auto-generate summaries, priority scores, classifications, and action items per email
+- **Hybrid search** — BM25 full-text search + optional semantic/vector search
+- **Workflow rules** — define conditions (AI-powered or manual) and trigger actions automatically
+- **Compose & reply** — full email composition with reply, reply-all, and forward
+- **Keyboard shortcuts** — navigate, archive, reply, search — all from the keyboard
+- **Dark mode** — full dark/light theme support
+- **Self-hosted** — runs on your machine, your data stays with you
 
 ## Quick Start
 
 ```bash
 # Clone and install
-git clone https://github.com/rafatandom/email-client.git
+git clone https://github.com/rafapetter/email-client.git
 cd email-client
 npm install
 
@@ -31,7 +61,7 @@ npm run db:migrate
 npm run dev
 ```
 
-Open [http://localhost:3004](http://localhost:3004) and add your email account.
+Open [http://localhost:3004](http://localhost:3004), create an account, and add your email credentials.
 
 ## Database
 
@@ -85,5 +115,15 @@ docker run -d \
 - **Framework**: Next.js 16 (App Router)
 - **Database**: SQLite via @libsql/client + Drizzle ORM
 - **Auth**: NextAuth.js v5
-- **Email**: @petter100/emai SDK (IMAP/SMTP, AI, search)
+- **Email**: [@petter100/emai](https://www.npmjs.com/package/@petter100/emai) SDK (IMAP/SMTP, AI, search)
+- **AI**: Anthropic Claude (via emai SDK adapters)
 - **UI**: Tailwind CSS v4 + shadcn/ui + Zustand
+- **State**: Zustand for client state, Server Actions for data mutations
+
+## Related
+
+- **[@petter100/emai](https://github.com/rafapetter/emai)** — The AI-first email SDK that powers the backend. Use it standalone in your agents, or pair it with emai-client for a full human-in-the-loop setup.
+
+## License
+
+MIT
